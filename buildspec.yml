@@ -1,0 +1,52 @@
+version: 0.2
+
+# CodeBuild buildspec: tests the app, builds and pushes the Docker image to ECR,
+# and emits the artifacts CodeDeploy needs for an ECS blue/green deployment.
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+  exported-variables:
+    - IMAGE_TAG
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing dependencies"
+      - cd app && npm install && cd ..
+
+  pre_build:
+    commands:
+      - echo "Running unit tests"
+      - cd app && npm test && cd ..
+      - echo "Logging in to Amazon ECR ($AWS_DEFAULT_REGION)"
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}
+      - echo "Image tag is $IMAGE_TAG"
+
+  build:
+    commands:
+      - echo "Building Docker image"
+      - docker build -t $ECR_REPOSITORY_URI:$IMAGE_TAG ./app
+      - docker tag  $ECR_REPOSITORY_URI:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
+
+  post_build:
+    commands:
+      - echo "Pushing Docker image to ECR"
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - docker push $ECR_REPOSITORY_URI:latest
+      - echo "Writing image definitions for CodeDeploy"
+      - printf '{"ImageURI":"%s"}' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > imageDetail.json
+      - sed -e "s|<IMAGE_NAME>|$ECR_REPOSITORY_URI:$IMAGE_TAG|g" -e "s|<TASK_ROLE_ARN>|$TASK_ROLE_ARN|g" -e "s|<EXECUTION_ROLE_ARN>|$EXECUTION_ROLE_ARN|g" taskdef.json > taskdef.rendered.json
+      - mv taskdef.rendered.json taskdef.json
+      - cat imageDetail.json
+      - cat taskdef.json
+
+artifacts:
+  files:
+    - appspec.yaml
+    - taskdef.json
+    - imageDetail.json
+  discard-paths: yes

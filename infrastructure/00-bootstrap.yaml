@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Bootstrap stack: an S3 source bucket and a one-shot CodeBuild project that
+  builds the initial Docker image in the cloud and pushes it to ECR. This
+  removes the need for Docker on the operator's laptop.
+
+Parameters:
+  EcrRepositoryUri:
+    Type: String
+    Description: ECR repo URI (output of 01-ecr stack)
+
+Resources:
+  SeedSourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration: { Status: Enabled }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SeedBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codebuild.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SeedBuildInline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents]
+                Resource: '*'
+              - Effect: Allow
+                Action: [s3:GetObject, s3:GetObjectVersion]
+                Resource: !Sub '${SeedSourceBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                Resource: '*'
+
+  SeedBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: cicd-demo-seed-build
+      ServiceRole: !GetAtt SeedBuildRole.Arn
+      Artifacts: { Type: NO_ARTIFACTS }
+      Source:
+        Type: S3
+        Location: !Sub '${SeedSourceBucket}/source.zip'
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "Logging in to ECR"
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+            build:
+              commands:
+                - echo "Building seed image"
+                - docker build -t $ECR_REPOSITORY_URI:latest ./app
+            post_build:
+              commands:
+                - echo "Pushing seed image to ECR"
+                - docker push $ECR_REPOSITORY_URI:latest
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - { Name: AWS_DEFAULT_REGION, Value: !Ref AWS::Region }
+          - { Name: ECR_REPOSITORY_URI, Value: !Ref EcrRepositoryUri }
+
+Outputs:
+  SeedBucketName:
+    Value: !Ref SeedSourceBucket
+    Export: { Name: !Sub '${AWS::StackName}-SeedBucket' }
+  SeedProjectName:
+    Value: !Ref SeedBuildProject
+    Export: { Name: !Sub '${AWS::StackName}-SeedProject' }

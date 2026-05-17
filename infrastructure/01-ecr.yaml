@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECR repository for the CI/CD demo app.
+
+Parameters:
+  RepositoryName:
+    Type: String
+    Default: cicd-demo-app
+
+Resources:
+  AppRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref RepositoryName
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+Outputs:
+  RepositoryUri:
+    Description: ECR repository URI
+    Value: !GetAtt AppRepository.RepositoryUri
+    Export:
+      Name: !Sub '${AWS::StackName}-RepoUri'
+  RepositoryArn:
+    Value: !GetAtt AppRepository.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RepoArn'
