@@ -183,10 +183,14 @@ Resources:
               - Effect: Allow
                 Action:
                   - codedeploy:CreateDeployment
+                  - codedeploy:GetApplication
+                  - codedeploy:GetApplicationRevision
                   - codedeploy:GetDeployment
                   - codedeploy:GetDeploymentConfig
-                  - codedeploy:GetApplicationRevision
+                  - codedeploy:GetDeploymentGroup
                   - codedeploy:RegisterApplicationRevision
+                  - codedeploy:ContinueDeployment
+                  - codedeploy:StopDeployment
                 Resource: '*'
               - Effect: Allow
                 Action: codestar-connections:UseConnection
