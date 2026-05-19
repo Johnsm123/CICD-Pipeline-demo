@@ -199,8 +199,16 @@ Resources:
                 Action:
                   - ecs:DescribeServices
                   - ecs:DescribeTaskDefinition
-                  - iam:PassRole
+                  - ecs:RegisterTaskDefinition
+                  - ecs:UpdateService
+                  - ecs:TagResource
                 Resource: '*'
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: [ecs-tasks.amazonaws.com, ecs.amazonaws.com]
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline

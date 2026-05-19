@@ -2,11 +2,11 @@ const express = require('express');
 
 const app = express();
 const port = process.env.PORT || 8080;
-const version = process.env.APP_VERSION || 'v1';
+const version = process.env.APP_VERSION || 'v2';
 
 app.get('/', (req, res) => {
   res.json({
-    message: 'Hello from the AWS CI/CD demo!',
+    message: 'Deployed by AWS CodePipeline! Blue/Green deploy successful.',
     version,
     hostname: require('os').hostname(),
     timestamp: new Date().toISOString(),

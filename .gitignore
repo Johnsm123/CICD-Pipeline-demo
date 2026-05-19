@@ -4,3 +4,10 @@ npm-debug.log
 .env
 *.log
 .aws-sam/
+
+# Local presentations / Office temp files (not part of the deployable project)
+*.pptx
+~$*
+
+# One-time bootstrap artifact (uploaded to S3, not needed in repo)
+source.zip
