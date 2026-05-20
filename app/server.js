@@ -2,7 +2,7 @@ const express = require("express");
 
 const app = express();
 const port = process.env.PORT || 8080;
-const version = process.env.APP_VERSION || "v4";
+const version = process.env.APP_VERSION || "v5";
 
 app.get("/", (req, res) => {
   res.json({
