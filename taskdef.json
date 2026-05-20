@@ -17,9 +17,7 @@
           "protocol": "tcp"
         }
       ],
-      "environment": [
-        { "name": "APP_VERSION", "value": "v3" }
-      ],
+      "environment": [],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
