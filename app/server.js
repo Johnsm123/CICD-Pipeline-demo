@@ -6,7 +6,7 @@ const version = process.env.APP_VERSION || "v7";
 
 app.get("/", (req, res) => {
   res.json({
-    message: "Deployed by AWS CodePipeline! Blue/Green deploy successful.",
+    message: "Deployed all by AWS CodePipeline! Blue/Green deploy successful.",
     version,
     hostname: require("os").hostname(),
     timestamp: new Date().toISOString(),
